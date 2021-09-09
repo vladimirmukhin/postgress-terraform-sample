@@ -1,12 +1,3 @@
-terraform {
-  required_providers {
-    postgresql = {
-      source  = "cyrilgdn/postgresql"
-      # version = "~> 1.0"
-    }
-  }
-}
-
 provider "aws" {
   region = "us-east-1"
 }
@@ -19,7 +10,9 @@ module "vpc" {
 
   azs                  = ["us-east-1a", "us-east-1b", "us-east-1c"]
   public_subnets       = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  private_subnets      = ["10.0.201.0/24", "10.0.202.0/24", "10.0.203.0/24"]
   enable_dns_hostnames = true
+  enable_nat_gateway   = true
 }
 
 resource "aws_iam_role" "sample" {
@@ -40,6 +33,11 @@ resource "aws_iam_role" "sample" {
           Effect   = "Allow"
           Resource = "*"
         },
+        {
+          "Effect": "Allow",
+          "Action": "ssm:GetParameter",
+          "Resource": "arn:aws:ssm:*:890363476833:parameter/*"
+        }
       ]
     })
   }
@@ -96,7 +94,13 @@ resource "aws_lambda_function" "sample" {
   publish          = true
 
   vpc_config {
-    subnet_ids         = module.vpc.public_subnets
+    subnet_ids         = module.vpc.private_subnets
     security_group_ids = [aws_security_group.lambda.id]
   }
+}
+
+resource "aws_ssm_parameter" "foo" {
+  name  = "foo"
+  type  = "String"
+  value = "bar"
 }
